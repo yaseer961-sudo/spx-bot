@@ -1,10 +1,11 @@
+import os
 import time
 import requests
 import yfinance as yf
 from datetime import datetime
 
-TELEGRAM_TOKEN = “8633605004:AAGOO5mlpBMDmV9reDkFvjuZQZWcxHpdmvI”
-CHAT_ID = “971145292”
+TELEGRAM_TOKEN = os.environ.get(“TELEGRAM_TOKEN”)
+CHAT_ID = os.environ.get(“CHAT_ID”)
 
 ACCOUNT_SIZE = 10000
 RISK_PER_TRADE = 0.02
@@ -12,12 +13,12 @@ MAX_DAILY_LOSS = 0.05
 CHECK_INTERVAL = 60
 
 def send_telegram(message):
-url = f”https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage”
+url = “https://api.telegram.org/bot” + TELEGRAM_TOKEN + “/sendMessage”
 try:
-r = requests.post(url, json={“chat_id”: CHAT_ID, “text”: message, “parse_mode”: “HTML”}, timeout=10)
+r = requests.post(url, json={“chat_id”: CHAT_ID, “text”: message}, timeout=10)
 return r.status_code == 200
 except Exception as e:
-print(f”Send error: {e}”)
+print(“Send error: “ + str(e))
 return False
 
 def get_prices():
@@ -32,13 +33,14 @@ return None, None
 closes = list(df[“Close”].round(2))
 return closes, closes[-1]
 except Exception as e:
-print(f”Price error: {e}”)
+print(“Price error: “ + str(e))
 return None, None
 
 def calc_rsi(prices, period=14):
 if len(prices) < period + 1:
 return 50.0
-gains, losses = [], []
+gains = []
+losses = []
 for i in range(1, len(prices)):
 d = prices[i] - prices[i-1]
 gains.append(max(0, d))
@@ -91,8 +93,8 @@ return None
 
 def fmt_signal(s):
 now = datetime.now().strftime(”%H:%M:%S”)
-arrow = “BUY” if s[“type”] == “BUY” else “SELL”
-return f”{arrow} SPX 0DTE\nTime: {now}\n\nEntry: {s[‘entry’]}\nTarget 1: {s[‘tp1’]}\nTarget 2: {s[‘tp2’]}\nStop Loss: {s[‘sl’]}\n\nRSI: {s[‘rsi’]} | MACD: {s[‘macd’]}\nStrength: {s[‘score’]}/4\n\nContracts: {s[‘contracts’]}\nRisk: ${s[‘risk’]} | Reward: ${s[‘reward’]}\nR:R = 1:{s[‘rr’]}\n\nFor educational purposes only”
+label = “BUY” if s[“type”] == “BUY” else “SELL”
+return label + “ SPX 0DTE\nTime: “ + now + “\n\nEntry: “ + str(s[“entry”]) + “\nTarget 1: “ + str(s[“tp1”]) + “\nTarget 2: “ + str(s[“tp2”]) + “\nStop Loss: “ + str(s[“sl”]) + “\n\nRSI: “ + str(s[“rsi”]) + “ | MACD: “ + str(s[“macd”]) + “\nStrength: “ + str(s[“score”]) + “/4\n\nContracts: “ + str(s[“contracts”]) + “\nRisk: $” + str(s[“risk”]) + “ | Reward: $” + str(s[“reward”]) + “\nR:R = 1:” + str(s[“rr”]) + “\n\nFor educational purposes only”
 
 def main():
 print(“Bot started…”)
@@ -113,23 +115,23 @@ continue
 errors = 0
 checks += 1
 rsi = calc_rsi(prices)
-print(f”[{datetime.now().strftime(’%H:%M:%S’)}] SPX={price} RSI={rsi} check#{checks}”)
+print(datetime.now().strftime(”%H:%M:%S”) + “ SPX=” + str(price) + “ RSI=” + str(rsi) + “ check#” + str(checks))
 signal = analyze(prices)
 if signal:
 if last_signal != signal[“type”]:
 if send_telegram(fmt_signal(signal)):
-print(f”Signal sent: {signal[‘type’]}”)
+print(“Signal sent: “ + signal[“type”])
 last_signal = signal[“type”]
 else:
 last_signal = None
 if checks % 10 == 0:
-send_telegram(f”SPX Update\nPrice: {price}\nRSI: {rsi}\nNo signal. Check #{checks}”)
+send_telegram(“SPX Update\nPrice: “ + str(price) + “\nRSI: “ + str(rsi) + “\nNo signal. Check #” + str(checks))
 time.sleep(CHECK_INTERVAL)
 except KeyboardInterrupt:
 send_telegram(“Bot stopped.”)
 break
 except Exception as e:
-print(f”Error: {e}”)
+print(“Error: “ + str(e))
 time.sleep(30)
 
 if **name** == “**main**”:
